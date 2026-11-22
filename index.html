@@ -1180,10 +1180,6 @@
           card.innerHTML = `
             <div class="${singleSpotlight ? 'lg:col-span-7 border-b lg:border-b-0 lg:border-r border-hairline' : 'border-b border-hairline'} bg-well overflow-hidden relative aspect-[16/8.5] flex items-center justify-center">
               ${getProjectSchematic(project.id, 'card')}
-              <span class="absolute top-3 right-3 inline-flex items-center gap-1.5 px-2 py-0.5 bg-canvas/90 border border-hairline font-mono text-[10px] uppercase tracking-[0.08em] text-muted group-hover:text-ink group-hover:border-hairlineHover transition-colors">
-                <span>INSPECT</span>
-                <svg class="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M3 9L9 3M4 3H9V8"/></svg>
-              </span>
             </div>
 
             <div class="${singleSpotlight ? 'lg:col-span-5' : ''} p-5 sm:p-6 flex-1 flex flex-col justify-between gap-5">
@@ -1206,8 +1202,8 @@
               <div class="pt-4 border-t border-hairline flex flex-wrap items-center justify-between gap-3">
                 <div class="flex flex-wrap items-center gap-1.5">${tagsHtml}</div>
                 <span class="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted group-hover:text-ink transition-colors">
-                  <span>BREAKDOWN</span>
-                  <svg class="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M2 6H10M7 3L10 6L7 9"/></svg>
+                  <span>INSPECT</span>
+                  <svg class="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M3 9L9 3M4 3H9V8"/></svg>
                 </span>
               </div>
             </div>
@@ -1312,6 +1308,9 @@
           const el = document.getElementById(id);
           if (el) observer.observe(el);
         });
+        window.addEventListener('scroll', () => {
+          if (window.scrollY < 160) setActiveNav('');
+        }, { passive: true });
       }
 
       updateFilterTabStyles();
