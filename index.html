@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAIRO // Systems &amp; Environment Dev</title>
+  <meta name="description" content="KAIRO — Independent Roblox Luau systems architect and brutalist environment developer." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2309090B'/%3E%3Crect x='1' y='1' width='30' height='30' fill='none' stroke='%23222225' stroke-width='2'/%3E%3Cpath d='M10 8v16M10 16l9-8M14 13l7 11' stroke='%23F4F4F5' stroke-width='2.4' stroke-linecap='square' fill='none'/%3E%3Crect x='23' y='6' width='3' height='3' fill='%23CCFF00'/%3E%3C/svg%3E" />
+
+  <!-- Google Fonts: Space Grotesk & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Grotesk"', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            canvas: '#09090B',
+            surface: '#111113',
+            well: '#0C0C0E',
+            hairline: '#222225',
+            hairlineHover: '#3F3F46',
+            ink: '#F4F4F5',
+            secondary: '#A1A1AA',
+            muted: '#71717A',
+            acid: '#CCFF00',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root { color-scheme: dark; }
+
+    html {
+      background-color: #09090B;
+      color: #F4F4F5;
+      scroll-padding-top: 84px;
+    }
+
+    body {
+      background-color: #09090B;
+      color: #F4F4F5;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      overflow-x: clip;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection { background-color: #F4F4F5; color: #09090B; }
+
+    /* Faint analog SVG noise grain overlay (opacity 0.03) */
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px 180px;
+    }
+
+    /* Crisp architectural 40px SVG hairline grid */
+    .arch-grid-bg {
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 0H0V40' fill='none' stroke='%23FFFFFF' stroke-opacity='0.03' stroke-width='1'/%3E%3C/svg%3E");
+      background-size: 40px 40px;
+    }
+
+    /* Subtle dark scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #09090B; }
+    ::-webkit-scrollbar-thumb { background: #222225; }
+    ::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+
+    /* Availability LED pulse (sharp opacity step, zero neon glow) */
+    @keyframes status-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.28; }
+    }
+    .status-dot { animation: status-blink 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+    /* Architectural corner crosshairs (+) */
+    .crosshair { position: absolute; width: 9px; height: 9px; pointer-events: none; z-index: 10; }
+    .crosshair::before, .crosshair::after { content: ""; position: absolute; background-color: #3F3F46; }
+    .crosshair::before { top: 4px; left: 0; width: 9px; height: 1px; }
+    .crosshair::after { left: 4px; top: 0; width: 1px; height: 9px; }
+
+    /* Filter card reveal */
+    @keyframes card-reveal {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card-reveal { animation: card-reveal 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    /* Technical SVG schematic hover micro-animations */
+    .schematic-svg * {
+      transition:
+        transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+        stroke 240ms ease,
+        fill 240ms ease,
+        opacity 260ms ease,
+        stroke-dashoffset 480ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 01: Aegis Combat Framework */
+    .aegis-sweep { stroke-dasharray: 290; stroke-dashoffset: 38; }
+    .project-card:hover .aegis-sweep, .modal-schematic .aegis-sweep { stroke: #F4F4F5; stroke-dashoffset: 0; }
+    .aegis-reticle { transform-box: fill-box; transform-origin: center; }
+    .project-card:hover .aegis-reticle { transform: rotate(45deg) scale(1.12); }
+    .project-card:hover .aegis-rays { stroke: #71717A; }
+    .project-card:hover .aegis-torso { stroke: #E4E4E7; }
+    .project-card:hover .aegis-hit-line { stroke: #F4F4F5; }
+
+    /* 02: Sector-09 Industrial Map */
+    .project-card:hover .sector-gantry { transform: translateY(-7px); }
+    .project-card:hover .sector-frustum { opacity: 0.72; stroke: #A1A1AA; }
+    .project-card:hover .sector-structure { stroke: #D4D4D8; }
+    .project-card:hover .sector-datum-line { stroke: #52525B; }
+
+    /* 03: Tactical HUD System */
+    .project-card:hover .hud-compass { transform: translateX(-20px); }
+    .project-card:hover .hud-tick-n { transform: translateY(4px); stroke: #F4F4F5; }
+    .project-card:hover .hud-tick-s { transform: translateY(-4px); stroke: #F4F4F5; }
+    .project-card:hover .hud-tick-w { transform: translateX(4px); stroke: #F4F4F5; }
+    .project-card:hover .hud-tick-e { transform: translateX(-4px); stroke: #F4F4F5; }
+    .project-card:hover .hud-ring { transform-box: fill-box; transform-origin: center; transform: scale(0.92); stroke: #71717A; }
+    .project-card:hover .hud-bar-primary { fill: #F4F4F5; }
+
+    /* 04: Procedural Dungeon Gen */
+    .dung-paths { stroke-dasharray: 240; stroke-dashoffset: 28; }
+    .project-card:hover .dung-paths, .modal-schematic .dung-paths { stroke: #F4F4F5; stroke-dashoffset: 0; }
+    .dung-cull { transform-box: fill-box; transform-origin: center; }
+    .project-card:hover .dung-cull { transform: scale(1.045); stroke: #71717A; }
+    .project-card:hover .dung-active-room { stroke: #E4E4E7; }
+    .project-card:hover .dung-culled-room { stroke: #3F3F46; }
+
+    /* Modal & Toast transitions */
+    #project-modal { transition: opacity 180ms ease; }
+    #project-modal-panel { transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
+    #project-modal.modal-hidden { opacity: 0; pointer-events: none; }
+    #project-modal.modal-hidden #project-modal-panel { opacity: 0; transform: translateY(10px) scale(0.985); }
+
+    #toast { transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
+    #toast.toast-hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+
+    :focus-visible { outline: 1px solid #F4F4F5; outline-offset: 2px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-canvas text-ink">
+  <!-- Subtle SVG Noise Grain Overlay (opacity 0.03) -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       1. STICKY MINIMAL HEADER
+       ============================================================ -->
+  <header class="sticky top-0 z-40 bg-canvas/90 backdrop-blur-md border-b border-hairline">
+    <div class="max-w-[1200px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+      <a href="#top" class="inline-flex items-center gap-2.5 font-mono text-xs sm:text-[13px] font-semibold tracking-[0.12em] text-ink hover:text-white transition-colors">
+        <span class="inline-block w-2 h-2 border border-ink bg-ink"></span>
+        <span>KAIRO.DEV</span>
+      </a>
+
+      <nav aria-label="Primary Navigation" class="hidden sm:flex items-center gap-8">
+        <a href="#work" data-nav-link="work" class="nav-link inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">
+          <span class="nav-dot w-1 h-1 bg-transparent transition-colors"></span>
+          <span>Work</span>
+        </a>
+        <a href="#stack" data-nav-link="stack" class="nav-link inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">
+          <span class="nav-dot w-1 h-1 bg-transparent transition-colors"></span>
+          <span>Stack</span>
+        </a>
+        <a href="#rates" data-nav-link="rates" class="nav-link inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">
+          <span class="nav-dot w-1 h-1 bg-transparent transition-colors"></span>
+          <span>Rates</span>
+        </a>
+      </nav>
+
+      <button
+        type="button"
+        data-copy-discord
+        class="inline-flex items-center gap-2 h-8 px-3 sm:px-3.5 bg-ink text-canvas border border-ink font-mono text-[11px] font-medium uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors cursor-pointer"
+        aria-label="Copy Discord username kairo.dev"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true">
+          <rect x="5.5" y="5.5" width="8" height="8" />
+          <path d="M10.5 5.5V2.5H2.5V10.5H5.5" />
+        </svg>
+        <span data-copy-label>Copy Discord</span>
+        <span class="hidden md:inline text-[10px] opacity-60 font-normal normal-case tracking-normal">kairo.dev</span>
+      </button>
+    </div>
+
+    <!-- Mobile Hairline Sub-Nav -->
+    <nav aria-label="Mobile Navigation" class="sm:hidden border-t border-hairline grid grid-cols-3 divide-x divide-hairline bg-canvas">
+      <a href="#work" data-nav-link="work" class="nav-link py-2 text-center font-mono text-[11px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">Work</a>
+      <a href="#stack" data-nav-link="stack" class="nav-link py-2 text-center font-mono text-[11px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">Stack</a>
+      <a href="#rates" data-nav-link="rates" class="nav-link py-2 text-center font-mono text-[11px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors">Rates</a>
+    </nav>
+  </header>
+
+  <!-- Main Architectural Frame -->
+  <main id="top" class="max-w-[1200px] mx-auto px-4 sm:px-6">
+    <div class="border-x border-hairline">
+
+      <!-- ============================================================
+           2. ASYMMETRIC HERO SECTION
+           ============================================================ -->
+      <section class="relative border-b border-hairline">
+        <span class="crosshair -top-[5px] -left-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -top-[5px] -right-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -bottom-[5px] -left-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -bottom-[5px] -right-[5px]" aria-hidden="true"></span>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12">
+          <!-- Left Primary Editorial Column -->
+          <div class="lg:col-span-8 p-6 sm:p-10 lg:p-12 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-8 sm:mb-10">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-surface border border-hairline rounded-[2px] font-mono text-[11px] tracking-[0.1em] text-ink">
+                  <span class="inline-flex items-center gap-1 text-muted">[<span class="status-dot inline-block w-1.5 h-1.5 rounded-full bg-acid" aria-hidden="true"></span>]</span>
+                  <span>AVAILABLE FOR COMMISSIONS</span>
+                </div>
+                <span class="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">KAIRO // SYSTEMS &amp; ENV DEV</span>
+              </div>
+
+              <h1 class="font-sans font-bold text-[32px] sm:text-5xl lg:text-[58px] leading-[1.01] tracking-[-0.04em] text-ink max-w-[18ch]">
+                High-performance Roblox systems &amp; brutalist worlds.
+              </h1>
+
+              <p class="mt-6 text-[15px] sm:text-base leading-relaxed text-secondary max-w-[54ch]">
+                Independent Luau systems engineer and environment architect building production combat pipelines, reactive Fusion interfaces, and stark low-poly spaces engineered to hold a locked 60fps at scale.
+              </p>
+            </div>
+
+            <div class="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
+              <a
+                href="#work"
+                class="inline-flex items-center gap-2.5 h-10 px-4 bg-ink text-canvas border border-ink font-mono text-xs font-medium uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors"
+              >
+                <span>Inspect Work</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true">
+                  <path d="M8 3v10M4 9l4 4 4-4" />
+                </svg>
+              </a>
+              <button
+                type="button"
+                data-copy-discord
+                class="inline-flex items-center gap-2.5 h-10 px-4 bg-surface text-ink border border-hairline font-mono text-xs uppercase tracking-[0.08em] rounded-[2px] hover:border-hairlineHover hover:bg-[#161619] transition-colors cursor-pointer"
+              >
+                <span data-copy-label>Discord: kairo.dev</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Asymmetric Spec Dossier Column -->
+          <aside class="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-hairline bg-well flex flex-col justify-between">
+            <div class="p-5 sm:p-6 border-b border-hairline arch-grid-bg">
+              <div class="flex items-center justify-between font-mono text-[10px] tracking-[0.1em] text-muted mb-3">
+                <span>INDEX // 00_PROFILE</span>
+                <span>REV 2026.4</span>
+              </div>
+              <svg viewBox="0 0 320 154" class="w-full h-auto block" role="img" aria-label="Isometric coordinate wireframe schematic">
+                <rect x="0.5" y="0.5" width="319" height="153" fill="#09090B" stroke="#222225" />
+                <g stroke="#18181B" stroke-width="1">
+                  <path d="M64 0V154M128 0V154M192 0V154M256 0V154M0 38H320M0 77H320M0 116H320" />
+                </g>
+                <g fill="none" stroke-linejoin="miter">
+                  <polygon points="160,124 226,92 160,60 94,92" stroke="#27272A" stroke-dasharray="3 3" />
+                  <line x1="160" y1="24" x2="160" y2="60" stroke="#27272A" stroke-dasharray="2 3" />
+                  <polygon points="160,24 218,52 160,80 102,52" fill="#111113" stroke="#71717A" stroke-width="1" />
+                  <polygon points="102,52 160,80 160,124 102,96" fill="#0C0C0E" stroke="#52525B" stroke-width="1" />
+                  <polygon points="218,52 160,80 160,124 218,96" fill="#0E0E11" stroke="#A1A1AA" stroke-width="1" />
+                  <polyline points="122,62 160,80 198,62" stroke="#3F3F46" stroke-width="1" />
+                  <line x1="160" y1="80" x2="160" y2="124" stroke="#E4E4E7" stroke-width="1.2" />
+                  <path d="M28 126H62M28 126V96" stroke="#52525B" stroke-width="1" />
+                  <line x1="28" y1="126" x2="48" y2="114" stroke="#3F3F46" stroke-width="1" />
+                </g>
+                <rect x="158" y="78" width="4" height="4" fill="#CCFF00" />
+                <g font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">
+                  <text x="24" y="90">Y</text>
+                  <text x="66" y="129">X</text>
+                  <text x="51" y="113">Z</text>
+                  <text x="234" y="24" fill="#A1A1AA">60.0 FPS</text>
+                  <text x="234" y="36">LUAU_STRICT</text>
+                  <text x="234" y="138">0x00_READY</text>
+                </g>
+              </svg>
+            </div>
+
+            <dl class="divide-y divide-hairline font-mono text-xs">
+              <div class="px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <dt class="text-muted uppercase tracking-[0.06em]">Focus</dt>
+                <dd class="text-ink text-right">Luau Systems / Maps</dd>
+              </div>
+              <div class="px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <dt class="text-muted uppercase tracking-[0.06em]">Pipeline</dt>
+                <dd class="text-ink text-right">Rojo · Wally · Fusion</dd>
+              </div>
+              <div class="px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <dt class="text-muted uppercase tracking-[0.06em]">Queue</dt>
+                <dd class="text-ink text-right inline-flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 bg-acid inline-block" aria-hidden="true"></span>
+                  <span>2 Slots Open</span>
+                </dd>
+              </div>
+              <div class="px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <dt class="text-muted uppercase tracking-[0.06em]">Payment</dt>
+                <dd class="text-secondary text-right">USD / Robux (DevEx)</dd>
+              </div>
+            </dl>
+          </aside>
+        </div>
+
+        <!-- Compact 3-Column Metrics Strip Separated by 1px Vertical Dividers -->
+        <div class="border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-px bg-hairline">
+          <div class="bg-surface px-6 sm:px-8 py-5 flex items-baseline justify-between sm:flex-col sm:gap-1">
+            <div class="font-sans font-bold text-2xl sm:text-[30px] tracking-[-0.03em] text-ink">42M+</div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">Visits Contributed</div>
+          </div>
+          <div class="bg-surface px-6 sm:px-8 py-5 flex items-baseline justify-between sm:flex-col sm:gap-1">
+            <div class="font-sans font-bold text-2xl sm:text-[30px] tracking-[-0.03em] text-ink">3+ Yrs</div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">Luau / Studio</div>
+          </div>
+          <div class="bg-surface px-6 sm:px-8 py-5 flex items-baseline justify-between sm:flex-col sm:gap-1">
+            <div class="font-sans font-bold text-2xl sm:text-[30px] tracking-[-0.03em] text-ink">48h</div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">Avg Turnaround</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           3. INTERACTIVE WORK BENTO GRID
+           ============================================================ -->
+      <section id="work" class="relative border-b border-hairline p-6 sm:p-10 lg:p-12">
+        <span class="crosshair -bottom-[5px] -left-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -bottom-[5px] -right-[5px]" aria-hidden="true"></span>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-10">
+          <div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">01 // SELECTED WORK</div>
+            <h2 class="font-sans font-bold text-2xl sm:text-3xl tracking-[-0.03em] text-ink">
+              Production Systems &amp; Environments
+            </h2>
+          </div>
+
+          <div role="tablist" aria-label="Filter projects by discipline" class="inline-flex flex-wrap items-center gap-1.5" id="filter-tabs">
+            <button type="button" role="tab" aria-selected="true" data-filter="ALL" class="filter-tab inline-flex items-center gap-2 h-8 px-3 font-mono text-[11px] uppercase tracking-[0.08em] border rounded-[2px] transition-colors cursor-pointer">
+              <span class="tab-indicator w-1.5 h-1.5"></span><span>ALL</span><span class="text-[10px] opacity-60">04</span>
+            </button>
+            <button type="button" role="tab" aria-selected="false" data-filter="SCRIPTING" class="filter-tab inline-flex items-center gap-2 h-8 px-3 font-mono text-[11px] uppercase tracking-[0.08em] border rounded-[2px] transition-colors cursor-pointer">
+              <span class="tab-indicator w-1.5 h-1.5"></span><span>SCRIPTING</span><span class="text-[10px] opacity-60">02</span>
+            </button>
+            <button type="button" role="tab" aria-selected="false" data-filter="BUILDING" class="filter-tab inline-flex items-center gap-2 h-8 px-3 font-mono text-[11px] uppercase tracking-[0.08em] border rounded-[2px] transition-colors cursor-pointer">
+              <span class="tab-indicator w-1.5 h-1.5"></span><span>BUILDING</span><span class="text-[10px] opacity-60">01</span>
+            </button>
+            <button type="button" role="tab" aria-selected="false" data-filter="UI" class="filter-tab inline-flex items-center gap-2 h-8 px-3 font-mono text-[11px] uppercase tracking-[0.08em] border rounded-[2px] transition-colors cursor-pointer">
+              <span class="tab-indicator w-1.5 h-1.5"></span><span>UI</span><span class="text-[10px] opacity-60">01</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="work-grid" class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5" aria-live="polite"></div>
+      </section>
+
+      <!-- ============================================================
+           4. TECHNICAL STACK ARCHITECTURE STRIP
+           ============================================================ -->
+      <section id="stack" class="relative border-b border-hairline">
+        <span class="crosshair -bottom-[5px] -left-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -bottom-[5px] -right-[5px]" aria-hidden="true"></span>
+
+        <div class="p-6 sm:p-10 lg:px-12 lg:py-10 border-b border-hairline flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">02 // ENGINEERING STACK</div>
+            <h2 class="font-sans font-bold text-2xl sm:text-3xl tracking-[-0.03em] text-ink">
+              Production Tooling &amp; Standards
+            </h2>
+          </div>
+          <p class="font-mono text-[11px] text-muted uppercase tracking-[0.06em]">
+            STRICT TYPED · VERSION CONTROLLED · PROFILED
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-hairline">
+          <div class="bg-surface p-6 sm:p-7 flex flex-col justify-between gap-5">
+            <div class="flex items-center justify-between font-mono text-[11px]">
+              <span class="uppercase tracking-[0.1em] text-ink">Languages</span>
+              <span class="text-[10px] text-muted">01</span>
+            </div>
+            <ul class="space-y-2.5 font-mono text-xs text-secondary">
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Luau (--!strict)</span><span class="text-[10px] text-muted">PRIMARY</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Native Codegen</span><span class="text-[10px] text-muted">COMPUTE</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Parallel Actors</span><span class="text-[10px] text-muted">MT</span></li>
+              <li class="flex items-center justify-between"><span>roblox-ts</span><span class="text-[10px] text-muted">OPT</span></li>
+            </ul>
+          </div>
+
+          <div class="bg-surface p-6 sm:p-7 flex flex-col justify-between gap-5">
+            <div class="flex items-center justify-between font-mono text-[11px]">
+              <span class="uppercase tracking-[0.1em] text-ink">Frameworks</span>
+              <span class="text-[10px] text-muted">02</span>
+            </div>
+            <ul class="space-y-2.5 font-mono text-xs text-secondary">
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Fusion 0.3</span><span class="text-[10px] text-muted">UI</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Blink / ByteNet</span><span class="text-[10px] text-muted">NETCODE</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>ProfileStore</span><span class="text-[10px] text-muted">DATA</span></li>
+              <li class="flex items-center justify-between"><span>Janitor / Trove</span><span class="text-[10px] text-muted">CLEANUP</span></li>
+            </ul>
+          </div>
+
+          <div class="bg-surface p-6 sm:p-7 flex flex-col justify-between gap-5">
+            <div class="flex items-center justify-between font-mono text-[11px]">
+              <span class="uppercase tracking-[0.1em] text-ink">Workflow</span>
+              <span class="text-[10px] text-muted">03</span>
+            </div>
+            <ul class="space-y-2.5 font-mono text-xs text-secondary">
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Rojo + Wally</span><span class="text-[10px] text-muted">SYNC</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Selene + StyLua</span><span class="text-[10px] text-muted">LINT</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>MicroProfiler</span><span class="text-[10px] text-muted">BENCH</span></li>
+              <li class="flex items-center justify-between"><span>Git / CI Builds</span><span class="text-[10px] text-muted">DEPLOY</span></li>
+            </ul>
+          </div>
+
+          <div class="bg-surface p-6 sm:p-7 flex flex-col justify-between gap-5">
+            <div class="flex items-center justify-between font-mono text-[11px]">
+              <span class="uppercase tracking-[0.1em] text-ink">Environment</span>
+              <span class="text-[10px] text-muted">04</span>
+            </div>
+            <ul class="space-y-2.5 font-mono text-xs text-secondary">
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Blender Low-Poly</span><span class="text-[10px] text-muted">MESH</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Modular Kitbash</span><span class="text-[10px] text-muted">GRID</span></li>
+              <li class="flex items-center justify-between border-b border-hairline/70 pb-2"><span>Future Lighting</span><span class="text-[10px] text-muted">ATMOS</span></li>
+              <li class="flex items-center justify-between"><span>StreamingEnabled</span><span class="text-[10px] text-muted">CULL</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           5. CAPABILITIES & SIMPLE PRICING STRIP
+           ============================================================ -->
+      <section id="rates" class="relative border-b border-hairline p-6 sm:p-10 lg:p-12">
+        <span class="crosshair -bottom-[5px] -left-[5px]" aria-hidden="true"></span>
+        <span class="crosshair -bottom-[5px] -right-[5px]" aria-hidden="true"></span>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 sm:mb-10">
+          <div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">03 // CAPABILITIES &amp; RATES</div>
+            <h2 class="font-sans font-bold text-2xl sm:text-3xl tracking-[-0.03em] text-ink">
+              Commission Scope &amp; Starting Rates
+            </h2>
+          </div>
+          <p class="font-mono text-[11px] text-muted max-w-[40ch] md:text-right leading-relaxed">
+            50% upfront / 50% on verified Studio handoff. USD via Stripe or Wise; Robux priced at DevEx equivalent (tax covered).
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          <!-- Column 1: Systems & Scripting -->
+          <div class="bg-surface border border-hairline hover:border-hairlineHover transition-colors p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between font-mono text-[11px] text-muted mb-5">
+                <span>01 // LUAU</span><span>SERVER-AUTH</span>
+              </div>
+              <h3 class="font-sans font-semibold text-xl tracking-[-0.025em] text-ink">Systems &amp; Scripting</h3>
+              <p class="mt-2.5 text-sm leading-relaxed text-secondary">
+                Core gameplay loops, combat frameworks, procedural map generators, and binary-packed networking built for high-CCU servers.
+              </p>
+              <ul class="mt-6 pt-5 border-t border-hairline space-y-2.5 font-mono text-[11px] text-secondary">
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Typed Luau architecture via Rojo</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Exploit-hardened server validation</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>MicroProfiler benchmark report</span></li>
+              </ul>
+            </div>
+            <div class="mt-8 pt-5 border-t border-hairline">
+              <div class="font-mono text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Starting At</div>
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="font-sans font-bold text-2xl tracking-[-0.03em] text-ink">$350 USD</span>
+                <span class="font-mono text-xs text-muted">/ 100,000 R$</span>
+              </div>
+              <button type="button" data-copy-discord class="mt-4 w-full h-9 px-3 bg-canvas text-ink border border-hairline font-mono text-[11px] uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors cursor-pointer">
+                <span data-copy-label>Book Scope · Copy Discord</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Column 2: Maps & Lobby Builds -->
+          <div class="bg-surface border border-hairline hover:border-hairlineHover transition-colors p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between font-mono text-[11px] text-muted mb-5">
+                <span>02 // ENVIRONMENT</span><span>LOW-POLY</span>
+              </div>
+              <h3 class="font-sans font-semibold text-xl tracking-[-0.025em] text-ink">Maps &amp; Lobby Builds</h3>
+              <p class="mt-2.5 text-sm leading-relaxed text-secondary">
+                Brutalist arenas, industrial hubs, and modular lobbies with clean sightlines, custom lighting presets, and tight triangle budgets.
+              </p>
+              <ul class="mt-6 pt-5 border-t border-hairline space-y-2.5 font-mono text-[11px] text-secondary">
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Reusable modular kitbash library</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Custom Future / Voxel lighting pass</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>StreamingEnabled &amp; collision audited</span></li>
+              </ul>
+            </div>
+            <div class="mt-8 pt-5 border-t border-hairline">
+              <div class="font-mono text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Starting At</div>
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="font-sans font-bold text-2xl tracking-[-0.03em] text-ink">$280 USD</span>
+                <span class="font-mono text-xs text-muted">/ 80,000 R$</span>
+              </div>
+              <button type="button" data-copy-discord class="mt-4 w-full h-9 px-3 bg-canvas text-ink border border-hairline font-mono text-[11px] uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors cursor-pointer">
+                <span data-copy-label>Book Scope · Copy Discord</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Column 3: Custom UI / HUD -->
+          <div class="bg-surface border border-hairline hover:border-hairlineHover transition-colors p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between font-mono text-[11px] text-muted mb-5">
+                <span>03 // INTERFACE</span><span>FUSION UI</span>
+              </div>
+              <h3 class="font-sans font-semibold text-xl tracking-[-0.025em] text-ink">Custom UI / HUD</h3>
+              <p class="mt-2.5 text-sm leading-relaxed text-secondary">
+                Tactical HUDs, inventories, and menu flows programmed natively in Fusion with spring tweening across desktop, mobile, and console.
+              </p>
+              <ul class="mt-6 pt-5 border-t border-hairline space-y-2.5 font-mono text-[11px] text-secondary">
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>State-driven Fusion 0.3 components</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Safe-zone &amp; gamepad nav ready</span></li>
+                <li class="flex items-start gap-2.5"><span class="text-muted select-none">—</span><span>Zero-GC tween &amp; spring feedback</span></li>
+              </ul>
+            </div>
+            <div class="mt-8 pt-5 border-t border-hairline">
+              <div class="font-mono text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Starting At</div>
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="font-sans font-bold text-2xl tracking-[-0.03em] text-ink">$210 USD</span>
+                <span class="font-mono text-xs text-muted">/ 60,000 R$</span>
+              </div>
+              <button type="button" data-copy-discord class="mt-4 w-full h-9 px-3 bg-canvas text-ink border border-hairline font-mono text-[11px] uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors cursor-pointer">
+                <span data-copy-label>Book Scope · Copy Discord</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           6. MINIMAL FOOTER WITH ONE-CLICK DISCORD COPY BOX
+           ============================================================ -->
+      <footer class="p-6 sm:p-10 lg:p-12 bg-well">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pb-8 border-b border-hairline">
+          <div class="lg:col-span-6">
+            <div class="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">DIRECT CHANNEL</div>
+            <h2 class="font-sans font-bold text-2xl sm:text-[28px] tracking-[-0.03em] text-ink">
+              Have a technical brief ready?
+            </h2>
+            <p class="mt-1.5 text-sm text-secondary">
+              Send project scope, target timeline, and reference builds directly on Discord.
+            </p>
+          </div>
+
+          <div class="lg:col-span-6 lg:flex lg:justify-end">
+            <button
+              type="button"
+              data-copy-discord
+              class="group w-full lg:max-w-[420px] flex items-center justify-between gap-4 p-3.5 sm:p-4 bg-surface border border-hairline hover:border-hairlineHover rounded-[2px] transition-colors text-left cursor-pointer"
+              aria-label="Copy Discord handle kairo.dev"
+            >
+              <div class="min-w-0">
+                <div class="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">DISCORD HANDLE // CLICK TO COPY</div>
+                <div class="mt-1 font-mono text-base sm:text-lg font-semibold text-ink tracking-tight truncate">kairo.dev</div>
+              </div>
+              <span data-copy-label class="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 bg-ink text-canvas font-mono text-[11px] font-medium uppercase tracking-[0.08em] rounded-[2px] group-hover:bg-acid group-hover:text-canvas transition-colors">
+                Copy
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-[11px] text-muted">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="text-ink">KAIRO // SYSTEMS &amp; ENVIRONMENT DEV</span>
+            <span class="hidden sm:inline text-hairlineHover">|</span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-acid inline-block" aria-hidden="true"></span>
+              <span>RESPONSE &lt; 12H</span>
+            </span>
+          </div>
+          <div>Built as a live portfolio demo</div>
+        </div>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       PROJECT DETAILS MODAL OVERLAY
+       ============================================================ -->
+  <div
+    id="project-modal"
+    class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-canvas/85 backdrop-blur-sm"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+    aria-hidden="true"
+  >
+    <div id="project-modal-panel" class="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-surface border border-hairlineHover rounded-[2px]">
+      <div class="sticky top-0 z-10 flex items-center justify-between gap-4 px-5 sm:px-6 h-12 bg-surface/95 backdrop-blur-sm border-b border-hairline">
+        <div class="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.1em]">
+          <span class="w-1.5 h-1.5 bg-acid inline-block" aria-hidden="true"></span>
+          <span id="modal-meta" class="text-ink">01 // SCRIPTING</span>
+        </div>
+        <button
+          type="button"
+          id="modal-close-btn"
+          class="inline-flex items-center gap-2 h-7 px-2.5 bg-canvas border border-hairline hover:border-hairlineHover text-secondary hover:text-ink font-mono text-[11px] uppercase tracking-[0.08em] rounded-[2px] transition-colors cursor-pointer"
+          aria-label="Close project details modal"
+        >
+          <span class="hidden sm:inline text-[10px] text-muted">ESC</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-7 space-y-6">
+        <div id="modal-schematic-stage" class="modal-schematic bg-well border border-hairline overflow-hidden"></div>
+
+        <div>
+          <h3 id="modal-title" class="font-sans font-bold text-2xl sm:text-3xl tracking-[-0.03em] text-ink"></h3>
+          <p id="modal-summary" class="mt-3 text-sm sm:text-[15px] leading-relaxed text-secondary"></p>
+        </div>
+
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-muted mb-2.5">TELEMETRY &amp; PERFORMANCE STATS</div>
+          <div id="modal-stats" class="grid grid-cols-2 sm:grid-cols-4 gap-px bg-hairline border border-hairline"></div>
+        </div>
+
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-muted mb-2.5">ARCHITECTURE BREAKDOWN</div>
+          <ul id="modal-highlights" class="space-y-2 border border-hairline bg-well p-4 font-mono text-xs text-secondary"></ul>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2" id="modal-tags"></div>
+
+        <div class="pt-5 border-t border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <span class="font-mono text-[11px] text-muted">Need a similar production module for your experience?</span>
+          <button
+            type="button"
+            data-copy-discord
+            class="inline-flex items-center justify-center gap-2 h-9 px-3.5 bg-ink text-canvas border border-ink font-mono text-[11px] font-medium uppercase tracking-[0.08em] rounded-[2px] hover:bg-acid hover:border-acid hover:text-canvas transition-colors cursor-pointer"
+          >
+            <span data-copy-label>Copy Discord (kairo.dev)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BOTTOM-RIGHT TOAST NOTIFICATION
+       ============================================================ -->
+  <div
+    id="toast"
+    role="status"
+    aria-live="polite"
+    class="toast-hidden fixed bottom-5 right-5 z-[55] flex items-center gap-3 px-4 py-3 bg-surface border border-hairlineHover rounded-[2px] font-mono text-xs text-ink"
+  >
+    <span class="w-1.5 h-1.5 bg-acid shrink-0" aria-hidden="true"></span>
+    <span id="toast-message">COPIED // kairo.dev</span>
+  </div>
+
+  <!-- ============================================================
+       VANILLA JS: BESPOKE SCHEMATICS, FILTERING, MODAL & TOAST
+       ============================================================ -->
+  <script>
+    (() => {
+      'use strict';
+
+      const DISCORD_HANDLE = 'kairo.dev';
+
+      function getProjectSchematic(id, ctx = 'card') {
+        const uid = `${id}-${ctx}`;
+
+        if (id === 'aegis') {
+          return `<svg viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" class="schematic-svg w-full h-full block" role="img" aria-label="Aegis Combat Framework raycast sweep and hit-volume wireframe">
+<rect width="640" height="340" fill="#0C0C0E"/>
+<g stroke="#17171B" stroke-width="1">
+  <path d="M40 0V340M80 0V340M120 0V340M160 0V340M200 0V340M240 0V340M280 0V340M320 0V340M360 0V340M400 0V340M440 0V340M480 0V340M520 0V340M560 0V340M600 0V340M0 40H640M0 80H640M0 120H640M0 160H640M0 200H640M0 240H640M0 280H640"/>
+</g>
+<path d="M16 26V16H26M624 26V16H614M16 314V324H26M624 314V324H614" stroke="#3F3F46" fill="none"/>
+<g font-family="JetBrains Mono, monospace" font-size="9.5" fill="#71717A">
+  <text x="28" y="31">SYS // RAYCAST_SWEEP_V4</text>
+  <text x="514" y="31" fill="#A1A1AA">TICK: 16.67MS</text>
+</g>
+<g fill="none" stroke="#222225" stroke-width="1" stroke-dasharray="3 4">
+  <circle cx="146" cy="176" r="105"/><circle cx="146" cy="176" r="168"/><circle cx="146" cy="176" r="222"/>
+</g>
+<g stroke="#71717A" stroke-width="1" fill="none">
+  <circle cx="146" cy="176" r="6" fill="#111113"/><path d="M134 176H158M146 164V188"/>
+</g>
+<text x="108" y="204" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">PIVOT_O0</text>
+<g class="aegis-rays" stroke="#3F3F46" stroke-width="1" stroke-dasharray="2 3">
+  <line x1="146" y1="176" x2="212" y2="74"/><line x1="146" y1="176" x2="278" y2="86"/>
+  <line x1="146" y1="176" x2="334" y2="114"/><line x1="146" y1="176" x2="365" y2="145"/>
+  <line x1="146" y1="176" x2="352" y2="198"/><line x1="146" y1="176" x2="306" y2="246"/>
+  <line x1="146" y1="176" x2="238" y2="268"/>
+</g>
+<path class="aegis-sweep" d="M212 74 C296 78, 368 112, 365 145 C362 198, 314 252, 238 268" fill="none" stroke="#A1A1AA" stroke-width="2" stroke-linecap="square"/>
+<g fill="#71717A">
+  <rect x="210" y="72" width="4" height="4"/><rect x="276" y="84" width="4" height="4"/>
+  <rect x="332" y="112" width="4" height="4"/><rect x="350" y="196" width="4" height="4"/>
+  <rect x="304" y="244" width="4" height="4"/><rect x="236" y="266" width="4" height="4"/>
+</g>
+<g fill="#111113" stroke="#52525B" stroke-width="1">
+  <rect x="328" y="62" width="136" height="206" fill="none" stroke="#27272A" stroke-dasharray="4 3"/>
+  <rect x="378" y="74" width="36" height="34"/>
+  <rect x="342" y="116" width="20" height="62"/><rect x="430" y="116" width="20" height="62"/>
+  <rect x="368" y="186" width="24" height="70"/><rect x="400" y="186" width="24" height="70"/>
+  <rect class="aegis-torso" x="366" y="114" width="60" height="66" stroke="#A1A1AA" stroke-width="1.25"/>
+  <path d="M366 114L426 180M426 114L366 180" stroke="#27272A"/>
+</g>
+<text x="330" y="55" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">BROADPHASE_AABB</text>
+<line class="aegis-hit-line" x1="365" y1="145" x2="296" y2="132" stroke="#A1A1AA" stroke-width="1.2"/>
+<g class="aegis-reticle" stroke="#F4F4F5" stroke-width="1.2" fill="none">
+  <rect x="355" y="135" width="20" height="20" stroke="#71717A"/>
+  <path d="M365 129V135M365 155V161M349 145H355M375 145H381"/>
+</g>
+<rect x="363" y="143" width="4" height="4" fill="#CCFF00"/>
+<g transform="translate(494, 72)" font-family="JetBrains Mono, monospace" font-size="8.5">
+  <rect x="0" y="0" width="118" height="196" fill="#09090B" stroke="#222225"/>
+  <text x="10" y="18" fill="#71717A">ROLLBACK_BUF</text>
+  <line x1="0" y1="26" x2="118" y2="26" stroke="#222225"/>
+  <rect x="10" y="38" width="98" height="24" fill="#111113" stroke="#222225"/><text x="18" y="53" fill="#71717A">T-2  33.3ms</text>
+  <rect x="10" y="70" width="98" height="24" fill="#111113" stroke="#222225"/><text x="18" y="85" fill="#71717A">T-1  16.6ms</text>
+  <rect x="10" y="102" width="98" height="26" fill="#16161A" stroke="#71717A"/><rect x="15" y="113" width="4" height="4" fill="#CCFF00"/><text x="25" y="118" fill="#F4F4F5">T0   VALID</text>
+  <rect x="10" y="136" width="98" height="24" fill="#111113" stroke="#222225" stroke-dasharray="2 2"/><text x="18" y="151" fill="#52525B">T+1  PRED</text>
+  <text x="10" y="183" fill="#A1A1AA">HIT: TORSO_01</text>
+</g>
+<line x1="28" y1="296" x2="612" y2="296" stroke="#222225"/>
+<g font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">
+  <text x="28" y="314">RAY_SEGMENTS: 12</text><text x="218" y="314">AUTH: SERVER_SIDE</text><text x="478" y="314">GC_ALLOC: 0.0 KB</text>
+</g>
+</svg>`;
+        }
+
+        if (id === 'sector09') {
+          return `<svg viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" class="schematic-svg w-full h-full block" role="img" aria-label="Sector-09 Industrial Map brutalist isometric CAD schematic">
+<rect width="640" height="340" fill="#0C0C0E"/>
+<g stroke="#17171B" stroke-width="1">
+  <path d="M40 0V340M80 0V340M120 0V340M160 0V340M200 0V340M240 0V340M280 0V340M320 0V340M360 0V340M400 0V340M440 0V340M480 0V340M520 0V340M560 0V340M600 0V340M0 40H640M0 80H640M0 120H640M0 160H640M0 200H640M0 240H640M0 280H640"/>
+</g>
+<g class="sector-datum-line" stroke="#222225" stroke-width="1" stroke-dasharray="4 4">
+  <line x1="28" y1="84" x2="554" y2="84"/><line x1="28" y1="168" x2="554" y2="168"/><line x1="28" y1="252" x2="554" y2="252"/>
+</g>
+<g font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">
+  <text x="562" y="87">EL +18M</text><text x="562" y="171">EL +09M</text><text x="562" y="255">EL +00M</text>
+</g>
+<path d="M16 26V16H26M624 26V16H614M16 314V324H26M624 314V324H614" stroke="#3F3F46" fill="none"/>
+<g font-family="JetBrains Mono, monospace" font-size="9.5" fill="#71717A">
+  <text x="28" y="31">CAD // SECTOR-09_ELEV_A</text><text x="524" y="31" fill="#A1A1AA">TRIS: 18.4K</text>
+</g>
+<g class="sector-structure" stroke="#3F3F46" stroke-width="1">
+  <polygon points="88,252 320,282 542,252 320,218" fill="#101013"/>
+  <path d="M164 240L394 272M242 229L468 262M164 262L394 229M242 272L468 240" stroke="#222225"/>
+</g>
+<g class="sector-structure" stroke="#71717A" stroke-width="1.1" stroke-linejoin="miter">
+  <polygon points="96,250 96,104 128,84 218,84 218,242" fill="#121215"/>
+  <polygon points="218,84 252,102 252,236 218,242" fill="#0E0E10" stroke="#52525B"/>
+  <path d="M126 84V248M156 84V246M186 84V244" stroke="#27272A"/>
+  <rect x="134" y="192" width="44" height="54" fill="#09090B" stroke="#A1A1AA"/>
+  <line x1="156" y1="192" x2="156" y2="246" stroke="#52525B"/><line x1="134" y1="210" x2="178" y2="210" stroke="#27272A"/>
+  <rect x="114" y="106" width="84" height="28" fill="#09090B" stroke="#52525B"/>
+  <path d="M114 113H198M114 120H198M114 127H198" stroke="#3F3F46"/>
+</g>
+<g class="sector-structure" stroke="#71717A" stroke-width="1.1" stroke-linejoin="miter">
+  <polygon points="392,240 392,134 422,116 522,116 522,250" fill="#121215"/>
+  <polygon points="392,134 366,148 366,236 392,240" fill="#0E0E10" stroke="#52525B"/>
+  <polygon points="384,116 420,96 534,96 534,116" fill="#161619" stroke="#A1A1AA"/>
+  <rect x="414" y="138" width="88" height="16" fill="#09090B" stroke="#E4E4E7"/>
+  <path d="M444 138V154M474 138V154" stroke="#52525B"/>
+  <polygon points="416,244 416,184 432,196 432,246" fill="#0E0E11" stroke="#52525B"/>
+  <polygon points="466,246 466,184 482,196 482,248" fill="#0E0E11" stroke="#52525B"/>
+</g>
+<g class="sector-gantry">
+  <g class="sector-frustum" fill="none" stroke="#52525B" stroke-width="1" stroke-dasharray="3 4" opacity="0.38">
+    <polygon points="274,158 242,248 308,248"/><polygon points="348,158 318,248 380,248"/>
+  </g>
+  <rect x="218" y="136" width="174" height="22" fill="#141418" stroke="#E4E4E7" stroke-width="1.2"/>
+  <path d="M218 158L240 136L262 158L284 136L306 158L328 136L350 158L372 136L392 158" fill="none" stroke="#71717A"/>
+  <line x1="218" y1="128" x2="392" y2="128" stroke="#52525B"/>
+  <rect x="268" y="158" width="12" height="4" fill="#F4F4F5"/><rect x="342" y="158" width="12" height="4" fill="#F4F4F5"/>
+</g>
+<g>
+  <circle cx="312" cy="248" r="10" fill="none" stroke="#3F3F46" stroke-dasharray="2 2"/>
+  <rect x="310" y="246" width="4" height="4" fill="#CCFF00"/>
+  <text x="326" y="244" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#A1A1AA">0,0,0</text>
+</g>
+<g stroke="#52525B" stroke-width="1" font-family="JetBrains Mono, monospace" font-size="8.5">
+  <path d="M96 62H522M96 57V67M522 57V67"/>
+  <rect x="272" y="54" width="76" height="16" fill="#0C0C0E" stroke="none"/>
+  <text x="281" y="65" fill="#A1A1AA" stroke="none">48.0 STUDS</text>
+</g>
+<line x1="28" y1="296" x2="612" y2="296" stroke="#222225"/>
+<g font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">
+  <text x="28" y="314">MOD_KIT: 24 ASSETS</text><text x="234" y="314">LIGHTING: FUTURE</text><text x="470" y="314">DRAWCALLS: 142</text>
+</g>
+</svg>`;
+        }
+
+        if (id === 'hud') {
+          return `<svg viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" class="schematic-svg w-full h-full block" role="img" aria-label="Tactical HUD System Fusion UI wireframe mockup">
+<defs><clipPath id="compass-clip-${uid}"><rect x="190" y="42" width="260" height="30"/></clipPath></defs>
+<rect width="640" height="340" fill="#0C0C0E"/>
+<rect x="24" y="22" width="592" height="296" fill="#09090B" stroke="#222225"/>
+<path d="M320 22V318M24 170H616" stroke="#141417"/>
+<path d="M44 58V40H62M596 58V40H578M44 282V300H62M596 282V300H578" stroke="#3F3F46" stroke-width="1.2" fill="none"/>
+<g font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">
+  <text x="54" y="56">FUSION_0.3 // SAFE_92%</text>
+  <text x="54" y="70" fill="#52525B">1920x1080 · SCALE_AUTO</text>
+</g>
+<rect x="190" y="42" width="260" height="30" fill="#111113" stroke="#222225"/>
+<g clip-path="url(#compass-clip-${uid})">
+  <g class="hud-compass" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">
+    <path d="M180 72V64M200 72V67M220 72V64M240 72V67M260 72V64M280 72V67M300 72V64M320 72V62M340 72V67M360 72V64M380 72V67M400 72V64M420 72V67M440 72V64M460 72V67M480 72V64" stroke="#52525B"/>
+    <text x="211" y="58">300</text><text x="253" y="58" fill="#A1A1AA">NW</text><text x="291" y="58">345</text>
+    <text x="316" y="58" fill="#F4F4F5" font-weight="600">N</text><text x="351" y="58">015</text>
+    <text x="394" y="58" fill="#A1A1AA">NE</text><text x="431" y="58">060</text><text x="471" y="58">075</text>
+  </g>
+</g>
+<polygon points="320,42 316,36 324,36" fill="#F4F4F5"/>
+<rect x="318" y="74" width="4" height="2" fill="#CCFF00"/>
+<g transform="translate(466, 44)" font-family="JetBrains Mono, monospace" font-size="8">
+  <rect x="0" y="0" width="124" height="18" fill="#111113" stroke="#222225"/>
+  <text x="8" y="12" fill="#E4E4E7">KAIRO</text><text x="42" y="12" fill="#71717A">[MK4]</text><text x="76" y="12" fill="#A1A1AA">UNIT_04</text>
+  <rect x="12" y="23" width="112" height="18" fill="#111113" stroke="#222225" opacity="0.72"/>
+  <text x="20" y="35" fill="#A1A1AA">VEX</text><text x="45" y="35" fill="#71717A">[SMG]</text><text x="80" y="35" fill="#71717A">NULL_2</text>
+  <rect x="28" y="46" width="96" height="18" fill="#111113" stroke="#222225" opacity="0.45"/>
+  <text x="36" y="58" fill="#71717A">OBJ_CAPTURED</text>
+</g>
+<g>
+  <circle class="hud-ring" cx="320" cy="170" r="34" fill="none" stroke="#27272A" stroke-dasharray="14 8"/>
+  <line class="hud-tick-n" x1="320" y1="146" x2="320" y2="158" stroke="#A1A1AA" stroke-width="1.5"/>
+  <line class="hud-tick-s" x1="320" y1="182" x2="320" y2="194" stroke="#A1A1AA" stroke-width="1.5"/>
+  <line class="hud-tick-w" x1="296" y1="170" x2="308" y2="170" stroke="#A1A1AA" stroke-width="1.5"/>
+  <line class="hud-tick-e" x1="332" y1="170" x2="344" y2="170" stroke="#A1A1AA" stroke-width="1.5"/>
+  <rect x="319" y="169" width="2" height="2" fill="#CCFF00"/>
+  <text x="364" y="173" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">42.5M</text>
+</g>
+<g transform="translate(54, 218)" font-family="JetBrains Mono, monospace">
+  <rect x="0" y="0" width="188" height="72" fill="#111113" stroke="#222225"/>
+  <text x="12" y="18" font-size="8.5" fill="#71717A">SHIELD</text><text x="152" y="18" font-size="8.5" fill="#A1A1AA">080</text>
+  <g fill="#71717A">
+    <rect x="12" y="24" width="14" height="5"/><rect x="29" y="24" width="14" height="5"/><rect x="46" y="24" width="14" height="5"/>
+    <rect x="63" y="24" width="14" height="5"/><rect x="80" y="24" width="14" height="5"/><rect x="97" y="24" width="14" height="5"/>
+    <rect x="114" y="24" width="14" height="5"/><rect x="131" y="24" width="14" height="5"/>
+  </g>
+  <rect x="148" y="24" width="14" height="5" fill="none" stroke="#3F3F46"/><rect x="165" y="24" width="11" height="5" fill="none" stroke="#3F3F46"/>
+  <text x="12" y="48" font-size="8.5" fill="#71717A">VITALS</text><text x="152" y="48" font-size="10" fill="#F4F4F5" font-weight="600">094</text>
+  <rect x="12" y="54" width="164" height="8" fill="#09090B" stroke="#27272A"/>
+  <rect class="hud-bar-primary" x="13" y="55" width="146" height="6" fill="#D4D4D8"/>
+</g>
+<g transform="translate(414, 212)" font-family="JetBrains Mono, monospace">
+  <rect x="0" y="0" width="174" height="78" fill="#111113" stroke="#222225"/>
+  <path d="M14 22H92L100 18H124V24H106L96 29H64L58 40H48L51 29H24L18 35H14V22Z" fill="none" stroke="#52525B" stroke-width="1.1"/>
+  <line x1="14" y1="45" x2="160" y2="45" stroke="#222225"/>
+  <text x="14" y="68" font-size="20" font-weight="600" fill="#F4F4F5">28</text><text x="44" y="68" font-size="11" fill="#71717A">/ 120</text>
+  <rect x="114" y="53" width="46" height="17" fill="#09090B" stroke="#3F3F46"/>
+  <rect x="120" y="60" width="3.5" height="3.5" fill="#CCFF00"/>
+  <text x="128" y="65" font-size="8.5" fill="#F4F4F5">AUTO</text>
+</g>
+</svg>`;
+        }
+
+        if (id === 'dungeon') {
+          return `<svg viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" class="schematic-svg w-full h-full block" role="img" aria-label="Procedural Dungeon Generator node graph and spatial culling diagram">
+<rect width="640" height="340" fill="#0C0C0E"/>
+<g stroke="#151519" stroke-width="1">
+  <path d="M32 0V340M64 0V340M96 0V340M128 0V340M160 0V340M192 0V340M224 0V340M256 0V340M288 0V340M320 0V340M352 0V340M384 0V340M416 0V340M448 0V340M480 0V340M512 0V340M544 0V340M576 0V340M608 0V340M0 32H640M0 64H640M0 96H640M0 128H640M0 160H640M0 192H640M0 224H640M0 256H640M0 288H640"/>
+</g>
+<path d="M16 26V16H26M624 26V16H614M16 314V324H26M624 314V324H614" stroke="#3F3F46" fill="none"/>
+<g font-family="JetBrains Mono, monospace" font-size="9.5" fill="#71717A">
+  <text x="28" y="31">GEN // GRAPH_SOLVER_V2</text><text x="502" y="31" fill="#A1A1AA">SEED: 0x9F4A2C</text>
+</g>
+<g class="dung-culled-room" fill="#09090B" stroke="#27272A" stroke-dasharray="4 3">
+  <rect x="60" y="72" width="76" height="52"/><rect x="64" y="184" width="68" height="48"/>
+  <rect x="508" y="74" width="74" height="48"/><rect x="514" y="196" width="70" height="54"/>
+</g>
+<g font-family="JetBrains Mono, monospace" font-size="8" fill="#52525B">
+  <text x="68" y="92">RM_08</text><text x="68" y="106">[CULLED]</text>
+  <text x="72" y="204">RM_09</text><text x="72" y="218">[CULLED]</text>
+  <text x="516" y="94">RM_10</text><text x="516" y="108">[CULLED]</text>
+  <text x="522" y="216">RM_11</text><text x="522" y="230">[CULLED]</text>
+</g>
+<g stroke="#222225" stroke-dasharray="2 3">
+  <line x1="136" y1="98" x2="188" y2="152"/><line x1="132" y1="208" x2="188" y2="236"/>
+  <line x1="472" y1="154" x2="508" y2="98"/><line x1="472" y1="184" x2="514" y2="220"/>
+</g>
+<circle class="dung-cull" cx="326" cy="170" r="126" fill="none" stroke="#3F3F46" stroke-dasharray="6 4"/>
+<text x="410" y="64" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#71717A">CULL_R: 220s</text>
+<g fill="#111113" stroke="#3F3F46">
+  <rect x="254" y="158" width="32" height="20"/><rect x="370" y="158" width="36" height="20"/>
+  <rect x="318" y="102" width="18" height="30"/><rect x="318" y="204" width="18" height="28"/>
+  <rect x="254" y="236" width="32" height="16"/>
+</g>
+<g class="dung-active-room" fill="#111113" stroke="#71717A" stroke-width="1.2">
+  <rect x="188" y="138" width="66" height="60"/><rect x="286" y="132" width="84" height="72" stroke="#D4D4D8"/>
+  <rect x="294" y="60" width="68" height="42"/><rect x="406" y="140" width="66" height="58"/>
+  <rect x="286" y="232" width="84" height="44"/><rect x="188" y="220" width="66" height="48"/>
+</g>
+<g fill="#27272A">
+  <rect x="296" y="142" width="5" height="5"/><rect x="355" y="142" width="5" height="5"/>
+  <rect x="296" y="189" width="5" height="5"/><rect x="355" y="189" width="5" height="5"/>
+</g>
+<path class="dung-paths" d="M221 168 H328 V81 M328 168 H439 M328 168 V254 H221 V244" fill="none" stroke="#A1A1AA" stroke-width="1.4"/>
+<g fill="#0C0C0E" stroke="#E4E4E7" stroke-width="1.2">
+  <circle cx="221" cy="168" r="3.5"/><circle cx="328" cy="81" r="3.5"/><circle cx="439" cy="168" r="3.5"/>
+  <circle cx="328" cy="254" r="3.5"/><circle cx="221" cy="244" r="3.5"/>
+</g>
+<g>
+  <polygon points="328,168 352,154 352,182" fill="#F4F4F5" opacity="0.08"/>
+  <rect x="325.5" y="165.5" width="5" height="5" fill="#CCFF00"/>
+</g>
+<g font-family="JetBrains Mono, monospace" font-size="8" fill="#A1A1AA">
+  <text x="195" y="151">01_SPAWN</text><text x="294" y="198" fill="#F4F4F5">02_HUB</text>
+  <text x="301" y="73">03_ARMORY</text><text x="413" y="153">04_VAULT</text>
+  <text x="294" y="270">05_SHAFT</text><text x="195" y="233">06_CELL</text>
+</g>
+<line x1="28" y1="296" x2="612" y2="296" stroke="#222225"/>
+<g font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">
+  <text x="28" y="314">CHUNKS: 6 ACTIVE / 4 CULLED</text><text x="278" y="314">GEN_TIME: 1.4MS</text><text x="478" y="314">LAG_SPIKES: 0</text>
+</g>
+</svg>`;
+        }
+
+        return '';
+      }
+
+      const PROJECTS = [
+        {
+          id: 'aegis',
+          index: '01',
+          title: 'AEGIS COMBAT FRAMEWORK',
+          category: 'SCRIPTING',
+          bentoSpan: 'lg:col-span-7',
+          tags: ['Luau', 'Raycast Hitboxes', '60fps Optimized'],
+          shortSummary:
+            'Server-authoritative melee and projectile combat architecture using pooled shapecast sweeps, lag-compensated rollback validation, and zero-allocation hit detection.',
+          breakdown:
+            'Engineered for high-concurrency competitive action titles where frame drops or hitbox desync break combat feel. Client prediction runs immediately for responsive animations while the server validates discrete raycast sweep segments against a ring-buffered position history.',
+          stats: [
+            { label: 'Frame Budget', value: '0.18ms' },
+            { label: 'Server Tick', value: '60 FPS' },
+            { label: 'Rollback Window', value: '120ms' },
+            { label: 'GC Churn', value: '0 KB/s' },
+          ],
+          highlights: [
+            'Object-pooled raycast & shapecast sweep segments across custom weapon attachment points.',
+            'Binary buffer packet serialization via Blink reducing combat bandwidth by 64%.',
+            'Deterministic state machine handling parries, hyper-armor, poise breaks, and i-frames.',
+            'Strict Luau typed modules cleanly decoupled for hot-swapping weapons and NPC archetypes.',
+          ],
+        },
+        {
+          id: 'sector09',
+          index: '02',
+          title: 'SECTOR-09 INDUSTRIAL MAP',
+          category: 'BUILDING',
+          bentoSpan: 'lg:col-span-5',
+          tags: ['Modular Kitbash', 'Custom Lighting', 'Low-Poly'],
+          shortSummary:
+            'Brutalist subterranean reactor arena constructed from a 24-piece modular Blender kit with high-contrast directional lighting and disciplined drawcall batching.',
+          breakdown:
+            'Designed around competitive sightline control and rapid spatial readability. Every structural slab, steel truss gantry, and bulkhead snaps to a 4-stud grid, letting designers iterate arena lanes without bloating triangle or memory budgets.',
+          stats: [
+            { label: 'Total Triangles', value: '18.4K' },
+            { label: 'Kit Modules', value: '24 PCS' },
+            { label: 'Drawcalls', value: '142' },
+            { label: 'Mobile FPS', value: '60 LOCK' },
+          ],
+          highlights: [
+            '24-piece modular architectural kit modeled in Blender with crisp chamfered silhouettes.',
+            'Tuned Future lighting pass using controlled volumetric beams and restrained atmospheric fog.',
+            'Simplified invisible collision hulls eliminating snagging on staircases and catwalks.',
+            'Audited for StreamingEnabled atomic model groups with zero pop-in along long sightlines.',
+          ],
+        },
+        {
+          id: 'hud',
+          index: '03',
+          title: 'TACTICAL HUD SYSTEM',
+          category: 'UI',
+          bentoSpan: 'lg:col-span-5',
+          tags: ['Fusion UI', 'Responsive Tweening', 'Zero-GC'],
+          shortSummary:
+            'Reactive combat HUD authored in Fusion 0.3 with spring-damped reticles, clipped compass bearings, and full safe-zone scaling across desktop, mobile, and console.',
+          breakdown:
+            'Built to surface live combat telemetry in under a glance without obscuring center screen space. Reactive state scopes eliminate manual UI object tracking and ensure clean memory teardown when switching between lobby, spectate, and active rounds.',
+          stats: [
+            { label: 'UI Update Cost', value: '0.09ms' },
+            { label: 'Spring Solver', value: 'Fusion' },
+            { label: 'Safe Zone', value: '92% Fit' },
+            { label: 'Device Targets', value: '3 OS' },
+          ],
+          highlights: [
+            'Declarative Fusion 0.3 component tree with scoped cleanup and zero memory leaks.',
+            'Spring-physics dynamic reticle expansion synced to weapon recoil and movement velocity.',
+            'Batched killfeed and damage indicator queues preventing layout thrashing in 40-player fights.',
+            'Automatic touch-control layout adaptation and full Xbox/PlayStation gamepad navigation.',
+          ],
+        },
+        {
+          id: 'dungeon',
+          index: '04',
+          title: 'PROCEDURAL DUNGEON GEN',
+          category: 'SCRIPTING',
+          bentoSpan: 'lg:col-span-7',
+          tags: ['Server-Side Gen', 'Zero-Lag Culling', 'Seeded Graph'],
+          shortSummary:
+            'Deterministic server-side dungeon layout solver pairing minimum-spanning-tree corridor stitching with real-time spatial occlusion culling for lag-free exploration.',
+          breakdown:
+            'Generates replayable multi-wing dungeon floors from a single 32-bit hex seed in under 2 milliseconds. Clients only instantiate rooms within their active visibility frustum and proximity radius, keeping client memory flat even on massive 80-room runs.',
+          stats: [
+            { label: 'Gen Latency', value: '1.4ms' },
+            { label: 'Max Rooms', value: '80+' },
+            { label: 'Cull Radius', value: '220s' },
+            { label: 'Frame Spikes', value: '0 MS' },
+          ],
+          highlights: [
+            'Deterministic seeded RNG guaranteeing identical geometry across server and late-joining clients.',
+            'Overlap-free room placement with MST + selective loop injection for non-linear flanks.',
+            'Chunked spatial hash culling that streams room props and lights cleanly across frames.',
+            'Built-in navmesh waypoint tagging for server-side enemy patrols and boss room lockdown.',
+          ],
+        },
+      ];
+
+      const workGrid = document.getElementById('work-grid');
+      const filterButtons = Array.from(document.querySelectorAll('.filter-tab'));
+      const modal = document.getElementById('project-modal');
+      const modalPanel = document.getElementById('project-modal-panel');
+      const modalCloseBtn = document.getElementById('modal-close-btn');
+      const modalMeta = document.getElementById('modal-meta');
+      const modalTitle = document.getElementById('modal-title');
+      const modalSummary = document.getElementById('modal-summary');
+      const modalSchematicStage = document.getElementById('modal-schematic-stage');
+      const modalStats = document.getElementById('modal-stats');
+      const modalHighlights = document.getElementById('modal-highlights');
+      const modalTags = document.getElementById('modal-tags');
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toast-message');
+
+      let activeFilter = 'ALL';
+      let lastFocusedCard = null;
+      let toastTimer = null;
+
+      function fallbackCopyText(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+        document.body.appendChild(textarea);
+        textarea.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        document.body.removeChild(textarea);
+        return ok;
+      }
+
+      function showToast(message) {
+        toastMessage.textContent = message;
+        toast.classList.remove('toast-hidden');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.add('toast-hidden'), 2600);
+      }
+
+      async function copyDiscord(triggerBtn) {
+        let copied = false;
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(DISCORD_HANDLE);
+            copied = true;
+          } catch (_) {
+            copied = fallbackCopyText(DISCORD_HANDLE);
+          }
+        } else {
+          copied = fallbackCopyText(DISCORD_HANDLE);
+        }
+
+        showToast(copied ? `COPIED TO CLIPBOARD // ${DISCORD_HANDLE}` : `DISCORD // ${DISCORD_HANDLE}`);
+
+        if (triggerBtn) {
+          const labelEl = triggerBtn.querySelector('[data-copy-label]');
+          if (labelEl) {
+            if (!labelEl.dataset.originalText) labelEl.dataset.originalText = labelEl.textContent;
+            labelEl.textContent = 'COPIED';
+            clearTimeout(triggerBtn._resetTimer);
+            triggerBtn._resetTimer = setTimeout(() => {
+              labelEl.textContent = labelEl.dataset.originalText;
+            }, 1600);
+          }
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const copyTrigger = e.target.closest('[data-copy-discord]');
+        if (copyTrigger) {
+          e.preventDefault();
+          copyDiscord(copyTrigger);
+        }
+      });
+
+      function updateFilterTabStyles() {
+        filterButtons.forEach((btn) => {
+          const isActive = btn.dataset.filter === activeFilter;
+          btn.setAttribute('aria-selected', String(isActive));
+          const indicator = btn.querySelector('.tab-indicator');
+
+          btn.classList.toggle('bg-surface', isActive);
+          btn.classList.toggle('border-hairlineHover', isActive);
+          btn.classList.toggle('text-ink', isActive);
+
+          btn.classList.toggle('bg-canvas', !isActive);
+          btn.classList.toggle('border-hairline', !isActive);
+          btn.classList.toggle('text-muted', !isActive);
+          btn.classList.toggle('hover:text-ink', !isActive);
+          btn.classList.toggle('hover:border-hairlineHover', !isActive);
+
+          indicator.classList.toggle('bg-acid', isActive);
+          indicator.classList.toggle('bg-hairlineHover', !isActive);
+        });
+      }
+
+      function renderProjects() {
+        const filtered = activeFilter === 'ALL' ? PROJECTS : PROJECTS.filter((p) => p.category === activeFilter);
+        workGrid.innerHTML = '';
+
+        filtered.forEach((project, idx) => {
+          let spanClass = project.bentoSpan;
+          let singleSpotlight = false;
+          if (activeFilter !== 'ALL') {
+            if (filtered.length === 1) {
+              spanClass = 'lg:col-span-12';
+              singleSpotlight = true;
+            } else if (filtered.length === 2) {
+              spanClass = 'lg:col-span-6';
+            }
+          }
+
+          const card = document.createElement('article');
+          card.className = `project-card card-reveal group relative bg-surface border border-hairline hover:border-hairlineHover transition-colors cursor-pointer flex flex-col ${
+            singleSpotlight ? 'lg:grid lg:grid-cols-12' : ''
+          } ${spanClass}`;
+          card.style.animationDelay = `${idx * 45}ms`;
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('role', 'button');
+          card.setAttribute('aria-label', `Inspect project ${project.index} ${project.title}`);
+
+          const tagsHtml = project.tags
+            .map((t) => `<span class="inline-block px-2 py-0.5 bg-canvas border border-hairline font-mono text-[10px] uppercase tracking-[0.06em] text-secondary">${t}</span>`)
+            .join('');
+
+          card.innerHTML = `
+            <div class="${singleSpotlight ? 'lg:col-span-7 border-b lg:border-b-0 lg:border-r border-hairline' : 'border-b border-hairline'} bg-well overflow-hidden relative aspect-[16/8.5] flex items-center justify-center">
+              ${getProjectSchematic(project.id, 'card')}
+              <span class="absolute top-3 right-3 inline-flex items-center gap-1.5 px-2 py-0.5 bg-canvas/90 border border-hairline font-mono text-[10px] uppercase tracking-[0.08em] text-muted group-hover:text-ink group-hover:border-hairlineHover transition-colors">
+                <span>INSPECT</span>
+                <svg class="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M3 9L9 3M4 3H9V8"/></svg>
+              </span>
+            </div>
+
+            <div class="${singleSpotlight ? 'lg:col-span-5' : ''} p-5 sm:p-6 flex-1 flex flex-col justify-between gap-5">
+              <div>
+                <div class="flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.08em] text-muted mb-2.5">
+                  <span class="inline-flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 bg-hairlineHover group-hover:bg-acid transition-colors"></span>
+                    <span>${project.category}</span>
+                  </span>
+                  <span class="text-[10px]">${project.stats[0].label}: <span class="text-secondary">${project.stats[0].value}</span></span>
+                </div>
+
+                <h3 class="font-sans font-bold text-lg sm:text-xl tracking-[-0.025em] text-ink group-hover:text-white transition-colors">
+                  <span class="font-mono font-normal text-muted mr-1.5">${project.index} /</span>${project.title}
+                </h3>
+
+                <p class="mt-2 text-sm leading-relaxed text-secondary">${project.shortSummary}</p>
+              </div>
+
+              <div class="pt-4 border-t border-hairline flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-1.5">${tagsHtml}</div>
+                <span class="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted group-hover:text-ink transition-colors">
+                  <span>BREAKDOWN</span>
+                  <svg class="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M2 6H10M7 3L10 6L7 9"/></svg>
+                </span>
+              </div>
+            </div>
+          `;
+
+          card.addEventListener('click', () => openModal(project, card));
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openModal(project, card);
+            }
+          });
+
+          workGrid.appendChild(card);
+        });
+      }
+
+      filterButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const next = btn.dataset.filter;
+          if (next === activeFilter) return;
+          activeFilter = next;
+          updateFilterTabStyles();
+          renderProjects();
+        });
+      });
+
+      function openModal(project, sourceEl) {
+        lastFocusedCard = sourceEl || document.activeElement;
+        modalMeta.textContent = `${project.index} // ${project.category}`;
+        modalTitle.textContent = `${project.index} / ${project.title}`;
+        modalSummary.textContent = project.breakdown;
+        modalSchematicStage.innerHTML = getProjectSchematic(project.id, 'modal');
+
+        modalStats.innerHTML = project.stats
+          .map(
+            (stat) => `
+            <div class="bg-well p-3.5 sm:p-4">
+              <div class="font-mono text-[10px] uppercase tracking-[0.08em] text-muted">${stat.label}</div>
+              <div class="mt-1 font-sans font-bold text-lg sm:text-xl tracking-[-0.02em] text-ink">${stat.value}</div>
+            </div>`
+          )
+          .join('');
+
+        modalHighlights.innerHTML = project.highlights
+          .map(
+            (item, i) => `
+            <li class="flex items-start gap-3">
+              <span class="text-muted shrink-0">0${i + 1}</span>
+              <span class="text-secondary leading-relaxed">${item}</span>
+            </li>`
+          )
+          .join('');
+
+        modalTags.innerHTML = project.tags
+          .map((tag) => `<span class="px-2.5 py-1 bg-canvas border border-hairline font-mono text-[11px] uppercase tracking-[0.06em] text-ink">${tag}</span>`)
+          .join('');
+
+        modal.classList.remove('modal-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        modalPanel.scrollTop = 0;
+        requestAnimationFrame(() => modalCloseBtn.focus());
+      }
+
+      function closeModal() {
+        if (modal.classList.contains('modal-hidden')) return;
+        modal.classList.add('modal-hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        if (lastFocusedCard && typeof lastFocusedCard.focus === 'function') lastFocusedCard.focus();
+      }
+
+      modalCloseBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('modal-hidden')) closeModal();
+      });
+
+      /* Subtle nav scrollspy */
+      const sectionIds = ['work', 'stack', 'rates'];
+      const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+      function setActiveNav(id) {
+        navLinks.forEach((link) => {
+          const isMatch = link.dataset.navLink === id;
+          const dot = link.querySelector('.nav-dot');
+          link.classList.toggle('text-ink', isMatch);
+          link.classList.toggle('text-muted', !isMatch);
+          if (dot) {
+            dot.classList.toggle('bg-acid', isMatch);
+            dot.classList.toggle('bg-transparent', !isMatch);
+          }
+        });
+      }
+
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => entries.forEach((entry) => { if (entry.isIntersecting) setActiveNav(entry.target.id); }),
+          { rootMargin: '-25% 0px -60% 0px', threshold: 0 }
+        );
+        sectionIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) observer.observe(el);
+        });
+      }
+
+      updateFilterTabStyles();
+      renderProjects();
+    })();
+  </script>
+</body>
+</html>
